@@ -53,25 +53,36 @@ def enum_op():
             for k in range(4):
                 yield (i, j, k)
 
-def transform(op_id):
+def transformOP(op_id):
     str_op = ['+', '-', '×', '÷']
-    return str_op[op_id]
+    return [str_op[i] for i in op_id]
+
+spec = ['①', '②', '③', '④', '⑤', '⑥', '⑦', '⑧', '⑨', '⑩']
+def specialNum(idx):
+    assert idx >= 1 and idx <= 10
+    return spec[idx-1]
 
 def display(state, array, op_id):
+    print("")
     if state == 1:
         node1 = _op(op_id[0], array[0], array[1])
         node2 = _op(op_id[1], array[2], array[3])
-        print("%d %s %d -> %d" % (array[0], transform(op_id[0]), array[1], node1))
-        print("%d %s %d -> %d" % (array[2], transform(op_id[1]), array[3], node2))
-        print("%d %s %d -> %d" % (node1, transform(op_id[2]), node2, CombineInto))
+        op_id = transformOP(op_id)
+        array = [specialNum(x) for x in array]
+        print("%s  %s %s  -> %d" % (array[0], op_id[0], array[1], node1))
+        print("%s  %s %s  -> %d" % (array[2], op_id[1], array[3], node2))
+        print("%d %s %d -> %d" % (node1, op_id[2], node2, CombineInto))
     elif state == 2:
         node1 = _op(op_id[0], array[0], array[1])
         node2 = _op(op_id[1], node1, array[2])
-        print("%d %s %d -> %d" % (array[0], transform(op_id[0]), array[1], node1))
-        print("%d %s %d -> %d" % (node1, transform(op_id[1]), array[2], node2))
-        print("%d %s %d -> %d" % (node2, transform(op_id[2]), array[3], CombineInto))
+        op_id = transformOP(op_id)
+        array = [specialNum(x) for x in array]
+        print("%s  %s %s  -> %d" % (array[0], op_id[0], array[1], node1))
+        print("%d %s %s  -> %d" % (node1, op_id[1], array[2], node2))
+        print("%d %s %s  -> %d" % (node2, op_id[2], array[3], CombineInto))
     else:
         raise NotImplementedError
+    print("")
         
 
 def main(numbers):
@@ -110,10 +121,43 @@ def main(numbers):
             elif node3 == CombineInto:
                 display(2, array, [idx_i, idx_j, idx_k])
                 return
-    print("组合%s没有找到解法" % str(numbers))
+    print("组合(%s)没有找到解法" % str(numbers)[1:-1])
+
+def parse_arg(args):
+    assert isinstance(args, str)
+    output = []
+    item = ''
+    for c in args:
+        #print(c)
+        if c == ' ':
+            if item != '':
+                output.append(item)
+                item = ''
+            continue
+        else:
+            item += c
+    if item != '':
+        output.append(item)
+    return output
+
+def loop():
+    while True:
+        print("> ", end='')
+        args = input()
+        array = parse_arg(args)
+        if 'exit' in array:
+            break
+        try:
+            array = [int(x) for x in array]
+        except:
+            print("只能输入4个从1-10的数字！[输入'exit'结束]")
+            continue
+        main(array)
 
 if __name__ == "__main__":
-
-    assert len(sys.argv[1:]) == 4
-    array = [int(x) for x in sys.argv[1:]]
-    main(array)
+    if len(sys.argv[1:]) == 0:
+        loop()
+    else:
+        assert len(sys.argv[1:]) == 4
+        array = [int(x) for x in sys.argv[1:]]
+        main(array)
