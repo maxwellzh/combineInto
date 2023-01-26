@@ -1,163 +1,117 @@
 # This is a funny brain-exercised game:
 # get four cards from poke, which in range
 # of A to 10 (A represents 1 here).
-# Then try to figure out how to combine 
+# Then try to figure out how to combine
 # these four numbers into a specific number
 # (24 here) with only + - * / operations.
-# And all of four numbers must be involved 
+# And all of four numbers must be involved
 # and only for once.
-import sys
 
-CombineInto = 24
+from typing import List, Iterator, Tuple
 
-def full_arrangement(array):
-    if len(array) == 2:
-        if array[0] == array[1]:
-            yield array
-        else:
-            yield array
-            yield [array[1], array[0]]
-        return
+COMBINEVAL = 24
+
+
+def solve(nums: List[int]) -> Iterator[List[Tuple[int, str, int, int]]]:
+    """return list of tuples, where the elements are
     
-    presence = []
-    for i in range(len(array)):
-        if array[i] in presence:
-            continue
-        presence.append(array[i])
-        for part_array in full_arrangement(array[:i] + array[i+1:]):
-            new_array = [array[i]] + part_array
-            yield new_array
-
-def _op(op_id, x, y):
-    if op_id == 0:
-        return x + y
-    elif op_id == 1:
-        if x - y >= 0:
-            return x - y
+    num1 op num2 ans
+    """
+    L = len(nums)
+    if L <= 1:
+        print("internal error! solve() received empty list.")
+    elif L == 2:
+        m, n = nums
+        yield [(m, '+', n, m+n)]
+        if m == 0 or n == 0:
+            return
+        if m >= n:
+            yield [(m, '-', n, m-n)]
+            if m % n == 0:
+                yield [(m, '/', n, m//n)]
         else:
-            return None
-        return x - y
-    elif op_id == 2:
-        return x * y
-    elif op_id == 3:
-        if y == 0:
-            return None
-        if x % y == 0:
-            return x // y
-        else:
-            return None
-
-def enum_op():
-    for i in range(4):
-        for j in range(4):
-            for k in range(4):
-                yield (i, j, k)
-
-def transformOP(op_id):
-    str_op = ['+', '-', '×', '÷']
-    return [str_op[i] for i in op_id]
-
-spec = ['①', '②', '③', '④', '⑤', '⑥', '⑦', '⑧', '⑨', '⑩']
-def specialNum(idx):
-    assert idx >= 1 and idx <= 10
-    return spec[idx-1]
-
-def display(state, array, op_id):
-    print("")
-    if state == 1:
-        node1 = _op(op_id[0], array[0], array[1])
-        node2 = _op(op_id[1], array[2], array[3])
-        op_id = transformOP(op_id)
-        array = [specialNum(x) for x in array]
-        print("%s  %s %s  -> %d" % (array[0], op_id[0], array[1], node1))
-        print("%s  %s %s  -> %d" % (array[2], op_id[1], array[3], node2))
-        print("%d %s %d -> %d" % (node1, op_id[2], node2, CombineInto))
-    elif state == 2:
-        node1 = _op(op_id[0], array[0], array[1])
-        node2 = _op(op_id[1], node1, array[2])
-        op_id = transformOP(op_id)
-        array = [specialNum(x) for x in array]
-        print("%s  %s %s  -> %d" % (array[0], op_id[0], array[1], node1))
-        print("%d %s %s  -> %d" % (node1, op_id[1], array[2], node2))
-        print("%d %s %s  -> %d" % (node2, op_id[2], array[3], CombineInto))
+            yield [(n, '-', m, n-m)]
+            if n % m == 0:
+                yield [(n, '/', m, n//m)]
+        yield [(m, '*', n, m*n)]
     else:
-        raise NotImplementedError
-    print("")
-        
+        for i in range(L):
+            for j in range(L):
+                if i == j:
+                    continue
 
-def main(numbers):
-    assert len(numbers) == 4
-    for array in full_arrangement(numbers):
-        # state1
-        for idx_i, idx_j, idx_k in enum_op():
-            node1 = _op(idx_i, array[0], array[1])
-            if node1 is None:
-                continue
+                m = nums[i] + nums[j]
+                res = [nums[k] for k in range(L) if k != i and k != j]
+                res.append(m)
+                for nl in solve(res):
+                    yield [(nums[i], '+', nums[j], m)] + nl
 
-            node2 = _op(idx_j, array[2], array[3])
-            if node2 is None:
-                continue
-            
-            node3 = _op(idx_k, node1, node2)
-            if node3 is None:
-                continue
-            elif node3 == CombineInto:
-                display(1, array, [idx_i, idx_j, idx_k])
-                return
-        
-        # state2
-        for idx_i, idx_j, idx_k in enum_op():
-            node1 = _op(idx_i, array[0], array[1])
-            if node1 is None:
-                continue
+                if nums[i] == 0 or nums[j] == 0:
+                    continue
 
-            node2 = _op(idx_j, node1, array[2])
-            if node2 is None:
-                continue
+                m = nums[i] * nums[j]
+                res[-1] = m
+                for nl in solve(res):
+                    yield [(nums[i], '*', nums[j], m)] + nl
 
-            node3 = _op(idx_k, node2, array[3])
-            if node3 is None:
-                continue
-            elif node3 == CombineInto:
-                display(2, array, [idx_i, idx_j, idx_k])
-                return
-    print("组合(%s)没有找到解法" % str(numbers)[1:-1])
+                m = nums[i] - nums[j]
+                if m < 0:
+                    continue
+                res[-1] = m
+                for nl in solve(res):
+                    yield [(nums[i], '-', nums[j], m)] + nl
 
-def parse_arg(args):
-    assert isinstance(args, str)
-    output = []
-    item = ''
-    for c in args:
-        #print(c)
-        if c == ' ':
-            if item != '':
-                output.append(item)
-                item = ''
-            continue
-        else:
-            item += c
-    if item != '':
-        output.append(item)
-    return output
+                if nums[i] < nums[j] or (nums[i] % nums[j] != 0):
+                    continue
+                m = nums[i] // nums[j]
+                res[-1] = m
+                for nl in solve(res):
+                    yield [(nums[i], '/', nums[j], m)] + nl
+    return
 
-def loop():
+
+def display(states: List[Tuple[int, str, int, int]]):
+    for n1, op, n2, res in states:
+        print(f"{n1:<2} {op} {n2:^3} -> {res:^3}")
+
+
+def game_loop():
+    print("> ", end="")
+    geti = input()
+    nums = geti.split()
+    if len(nums) != 4:
+        print("输入不合法!")
+        return
+
+    try:
+        nums = [int(x) for x in nums]
+    except ValueError:
+        print("输入不合法!")
+        return
+
+    for i in nums:
+        if i < 1 or i > 10:
+            print("输入不合法!")
+            return
+
+    for nl in solve(nums):
+        if nl[-1][-1] == COMBINEVAL:
+            print("="*15)
+            display(nl)
+            print("="*15)
+            return
+
+    print("没有找到解法")
+    return
+
+
+def main():
     while True:
-        print("> ", end='')
-        args = input()
-        array = parse_arg(args)
-        if 'exit' in array:
-            break
         try:
-            array = [int(x) for x in array]
-        except:
-            print("只能输入4个从1-10的数字！[输入'exit'结束]")
-            continue
-        main(array)
+            stat = game_loop()
+        except KeyboardInterrupt:
+            break
+
 
 if __name__ == "__main__":
-    if len(sys.argv[1:]) == 0:
-        loop()
-    else:
-        assert len(sys.argv[1:]) == 4
-        array = [int(x) for x in sys.argv[1:]]
-        main(array)
+    main()
